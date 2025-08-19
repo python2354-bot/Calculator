@@ -30,7 +30,6 @@ jobs:
           pip install --upgrade pip
           pip install "buildozer==1.5.0" "python-for-android==2024.01.21" "Cython<3.0" "wheel" "setuptools<70"
 
-      # === ВАЖНО: правильная установка commandline-tools (sdkmanager) ===
       - name: Install Android commandline-tools (sdkmanager)
         run: |
           set -euxo pipefail
@@ -38,9 +37,7 @@ jobs:
           curl -sSL -o "$RUNNER_TEMP/cmdtools.zip" \
             "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
           unzip -q "$RUNNER_TEMP/cmdtools.zip" -d "$RUNNER_TEMP/cmdtools"
-          # В архиве папка называется "cmdline-tools" — переносим ЕЁ в "latest"
           mv "$RUNNER_TEMP/cmdtools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-          # Добавляем в PATH, чтобы buildozer видел sdkmanager/aidl/zipalign
           echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_SDK_ROOT/build-tools/36.0.0" >> $GITHUB_PATH
@@ -53,11 +50,13 @@ jobs:
           "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" \
             "platform-tools" "platforms;android-34" "build-tools;36.0.0"
 
-      - name: Build APK (clean + debug)
+      - name: Build APK (debug)
         run: |
           set -euxo pipefail
           source venv/bin/activate
-          python -m buildozer -v android clean
+          if [ -d ".buildozer/android/platform/python-for-android" ]; then
+            python -m buildozer -v android clean
+          fi
           python -m buildozer -v android debug
 
       - name: Upload artifact (APK)
