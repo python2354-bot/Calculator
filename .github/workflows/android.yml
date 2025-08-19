@@ -1,0 +1,59 @@
+name: android
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Set up Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Create venv & install Buildozer / p4a
+        run: |
+          python -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip wheel Cython
+          pip install buildozer==1.5.0 "python-for-android==2024.1.21"
+
+      # Первый вызов — чтобы Buildozer скачал свой внутренний SDK в .buildozer
+      - name: Warm up SDK download
+        run: |
+          set -euxo pipefail
+          . venv/bin/activate
+          buildozer -v android debug || true
+
+      # Принимаем лицензии и ставим нужные пакеты ВНУТРИ .buildozer SDK
+      - name: Accept licenses & install SDK packages (inside .buildozer)
+        run: |
+          set -euxo pipefail
+          SDK="$GITHUB_WORKSPACE/.buildozer/android/platform/android-sdk"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses >/dev/null || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" "platform-tools" "platforms;android-34" "build-tools;36.0.0"
+
+      - name: Build APK (clean + debug)
+        run: |
+          set -euxo pipefail
+          . venv/bin/activate
+          SDK="$GITHUB_WORKSPACE/.buildozer/android/platform/android-sdk"
+          export PATH="$SDK/build-tools/36.0.0:$SDK/platform-tools:$PATH"
+          buildozer -v android clean
+          buildozer -v android debug
+
+      - name: Upload artifact (APK)
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-apk
+          path: bin/*.apk
