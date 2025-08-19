@@ -1,0 +1,19 @@
+# Buildozer / Android output
+.buildozer/
+bin/
+*.apk
+*.aab
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# venv
+.venv/
+venv/
+.env
+
+# OS junk
+.DS_Store
+Thumbs.db
